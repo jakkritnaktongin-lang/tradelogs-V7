@@ -3192,40 +3192,16 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ═══════════════════════════════════════════
 // MULTI-USER CONFIG
 // ═══════════════════════════════════════════
-const API_URL   = 'https://script.google.com/macros/s/AKfycbxWWlW8__qGaI8jW03uss1v08CY14ENKBZiizt4tOmte3GWxDUKyfyd4nkOwjUG3X3U/exec';
+const API_URL   = 'https://script.google.com/macros/s/AKfycbzgjOUz245MjgAjQVee_wPkjtfdBx_Vq1g5vhfwi6csl8EN3As4mcUFsycPgijbyIk/exec';
 const API_SECRET = '180243';
 
 var currentUser = null; // { username, role }
 
-// ─── API helper (CORS-safe via script tag for GET) ───────────
-function api(params) {
-  return new Promise(function(resolve, reject) {
-    var cbName = '_cb_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-    params.callback = cbName;
-    var qs = Object.keys(params).map(function(k){ return k + '=' + encodeURIComponent(params[k]); }).join('&');
-    
-    var script = document.createElement('script');
-    var timer = setTimeout(function() {
-      delete window[cbName];
-      if(script.parentNode) script.parentNode.removeChild(script);
-      reject(new Error('timeout'));
-    }, 15000);
-    
-    window[cbName] = function(data) {
-      clearTimeout(timer);
-      delete window[cbName];
-      if(script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
-    
-    script.src = API_URL + '?' + qs;
-    script.onerror = function() {
-      clearTimeout(timer);
-      delete window[cbName];
-      reject(new Error('Script load failed'));
-    };
-    document.head.appendChild(script);
-  });
+// ─── API helper ───────────────────────────
+async function api(params) {
+  var qs = Object.keys(params).map(function(k){ return k + '=' + encodeURIComponent(params[k]); }).join('&');
+  var res = await fetch(API_URL + '?' + qs);
+  return await res.json();
 }
 
 
