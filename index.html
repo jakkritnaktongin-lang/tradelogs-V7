@@ -856,6 +856,41 @@ body.light-mode .modal   { background:#fff; }
   .playbook-grid { grid-template-columns:1fr; }
 }
 
+
+/* ── Trade Reminder ── */
+.reminder-time-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px;
+}
+.reminder-time-btn {
+  padding:10px 6px; border-radius:8px; border:1px solid var(--line);
+  background:var(--ink3); color:var(--muted); cursor:pointer;
+  font-family:'DM Mono',monospace; font-size:12px; text-align:center;
+  transition:all 0.15s;
+}
+.reminder-time-btn:hover { border-color:var(--gold); color:var(--text); }
+.reminder-time-btn.active { background:rgba(245,200,66,0.12); border-color:var(--gold); color:var(--gold); font-weight:700; }
+.reminder-toggle {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; background:var(--ink3); border:1px solid var(--line);
+  border-radius:10px; margin-bottom:12px;
+}
+.toggle-switch {
+  width:44px; height:24px; border-radius:12px; background:var(--line);
+  cursor:pointer; position:relative; transition:background 0.2s; flex-shrink:0;
+}
+.toggle-switch.on { background:var(--gold); }
+.toggle-switch::after {
+  content:''; position:absolute; width:18px; height:18px; border-radius:50%;
+  background:#fff; top:3px; left:3px; transition:transform 0.2s;
+}
+.toggle-switch.on::after { transform:translateX(20px); }
+.reminder-active-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(245,200,66,0.1); border:1px solid rgba(245,200,66,0.3);
+  border-radius:6px; padding:3px 10px; font-size:11px; color:var(--gold);
+  font-family:'DM Mono',monospace;
+}
+
 </style>
 </head>
 <body>
@@ -1046,7 +1081,10 @@ body.light-mode .modal   { background:#fff; }
         <div class="account-change" id="sideAccChange"></div>
       </div>
     </div>
-      <button class="nav-btn" onclick="document.getElementById('ddSettingsOverlay').style.display='flex'" style="margin-top:4px;">
+      <button class="nav-btn" onclick="openReminderSettings()" style="margin-top:4px;" id="reminderNavBtn">
+      <span class="icon">🔔</span><span class="nav-text">Trade Reminder</span>
+    </button>
+    <button class="nav-btn" onclick="document.getElementById('ddSettingsOverlay').style.display='flex'" style="margin-top:4px;">
       <span class="icon">⚠️</span><span class="nav-text">Drawdown Alert</span>
     </button>
     <button class="nav-btn" onclick="installPWA()" id="pwaInstallBtn" style="margin-top:4px;display:none;">
@@ -1787,8 +1825,47 @@ body.light-mode .modal   { background:#fff; }
 </nav>
 
 <!-- Image Zoom -->
-<div id="imgZoomOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9000;align-items:center;justify-content:center;cursor:zoom-out;" onclick="this.style.display='none'">
-  <img id="imgZoomEl" src="" style="max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+<!-- ══ IMAGE VIEWER FULLSCREEN ══ -->
+<div id="imgZoomOverlay" onclick="if(event.target===this||event.target.id==='imgViewerArea')closeImgViewer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9900;flex-direction:column;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;flex-shrink:0;">
+    <div id="imgViewerTitle" style="font-size:13px;color:rgba(255,255,255,0.7);font-family:'DM Mono',monospace;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="imgViewerDownload()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;">⬇ ดาวน์โหลด</button>
+      <button onclick="closeImgViewer()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:18px;">✕</button>
+    </div>
+  </div>
+
+  <!-- Tab switcher (Before/After) -->
+  <div id="imgViewerTabs" style="display:none;justify-content:center;gap:8px;margin-bottom:8px;flex-shrink:0;">
+    <button id="imgTabBefore" onclick="switchImgTab('before')"
+      style="padding:6px 20px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;font-size:12px;font-family:'DM Mono',monospace;">
+      📷 Before
+    </button>
+    <button id="imgTabAfter" onclick="switchImgTab('after')"
+      style="padding:6px 20px;border-radius:20px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:rgba(255,255,255,0.5);cursor:pointer;font-size:12px;font-family:'DM Mono',monospace;">
+      📸 After
+    </button>
+  </div>
+
+  <!-- Image area -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;" id="imgViewerArea">
+    <!-- Prev/Next arrows (swipe between before/after) -->
+    <button id="imgViewerPrev" onclick="switchImgTab('before')"
+      style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:50%;width:44px;height:44px;font-size:20px;cursor:pointer;display:none;z-index:2;">‹</button>
+    <button id="imgViewerNext" onclick="switchImgTab('after')"
+      style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:50%;width:44px;height:44px;font-size:20px;cursor:pointer;display:none;z-index:2;">›</button>
+
+    <!-- Main image -->
+    <img id="imgZoomEl" src=""
+      style="max-width:calc(100vw - 80px);max-height:calc(100vh - 140px);border-radius:8px;object-fit:contain;transition:opacity 0.2s;cursor:grab;user-select:none;"
+      onclick="event.stopPropagation()">
+  </div>
+
+  <!-- Bottom hint -->
+  <div style="text-align:center;padding:10px;font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;" id="imgViewerHint">
+    กดพื้นที่ว่างเพื่อปิด
+  </div>
 </div>
 
 <!-- ══════════════════════════════════
@@ -2935,11 +3012,103 @@ function initChips(){
   });
 }
 
-function openImgZoom(src){
-  const ov = document.getElementById('imgZoomOverlay');
+// ═══════════════════════════════════════════
+// IMAGE VIEWER (Fullscreen)
+// ═══════════════════════════════════════════
+var _imgViewerBefore = '';
+var _imgViewerAfter  = '';
+var _imgViewerCurrent = 'before';
+
+function openImgViewer(before, after, which) {
+  _imgViewerBefore  = before  || '';
+  _imgViewerAfter   = after   || '';
+  _imgViewerCurrent = which   || 'before';
+  var hasBoth = _imgViewerBefore && _imgViewerAfter;
+  // Show/hide tabs and arrows
+  document.getElementById('imgViewerTabs').style.display   = hasBoth ? 'flex'  : 'none';
+  document.getElementById('imgViewerPrev').style.display   = hasBoth ? 'block' : 'none';
+  document.getElementById('imgViewerNext').style.display   = hasBoth ? 'block' : 'none';
+  // Set image
+  var src = _imgViewerCurrent === 'before' ? _imgViewerBefore : _imgViewerAfter;
+  if (!src) { src = _imgViewerBefore || _imgViewerAfter; _imgViewerCurrent = src === _imgViewerBefore ? 'before' : 'after'; }
   document.getElementById('imgZoomEl').src = src;
-  ov.style.display='flex';
+  updateImgViewerUI();
+  document.getElementById('imgZoomOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
+
+function openImgZoom(src) {
+  openImgViewer(src, '', 'before');
+}
+
+function closeImgViewer() {
+  document.getElementById('imgZoomOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function switchImgTab(which) {
+  if (which === 'before' && !_imgViewerBefore) return;
+  if (which === 'after'  && !_imgViewerAfter)  return;
+  _imgViewerCurrent = which;
+  var el = document.getElementById('imgZoomEl');
+  el.style.opacity = '0';
+  setTimeout(function() {
+    el.src = which === 'before' ? _imgViewerBefore : _imgViewerAfter;
+    el.style.opacity = '1';
+    updateImgViewerUI();
+  }, 150);
+}
+
+function updateImgViewerUI() {
+  var isBefore = _imgViewerCurrent === 'before';
+  var tabB = document.getElementById('imgTabBefore');
+  var tabA = document.getElementById('imgTabAfter');
+  var title = document.getElementById('imgViewerTitle');
+  if (tabB) {
+    tabB.style.background = isBefore ? 'rgba(245,200,66,0.3)' : 'rgba(255,255,255,0.1)';
+    tabB.style.color = isBefore ? '#f5c842' : 'rgba(255,255,255,0.5)';
+    tabB.style.borderColor = isBefore ? '#f5c842' : 'rgba(255,255,255,0.3)';
+  }
+  if (tabA) {
+    tabA.style.background = !isBefore ? 'rgba(245,200,66,0.3)' : 'rgba(255,255,255,0.1)';
+    tabA.style.color = !isBefore ? '#f5c842' : 'rgba(255,255,255,0.5)';
+    tabA.style.borderColor = !isBefore ? '#f5c842' : 'rgba(255,255,255,0.3)';
+  }
+  if (title) title.textContent = isBefore ? '📷 Chart Before' : '📸 Chart After';
+  // Update arrow visibility
+  document.getElementById('imgViewerPrev').style.opacity = isBefore ? '0.3' : '1';
+  document.getElementById('imgViewerNext').style.opacity = !isBefore ? '0.3' : '1';
+}
+
+function imgViewerDownload() {
+  var src = document.getElementById('imgZoomEl').src;
+  if (!src) return;
+  var a = document.createElement('a');
+  a.href = src;
+  a.download = 'chart_' + _imgViewerCurrent + '_' + Date.now() + '.png';
+  a.click();
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+  if (document.getElementById('imgZoomOverlay').style.display === 'none') return;
+  if (e.key === 'Escape') closeImgViewer();
+  if (e.key === 'ArrowLeft'  && _imgViewerBefore) switchImgTab('before');
+  if (e.key === 'ArrowRight' && _imgViewerAfter)  switchImgTab('after');
+});
+
+// Touch swipe support
+var _touchStartX = 0;
+document.getElementById('imgZoomOverlay') && document.getElementById('imgZoomOverlay').addEventListener('touchstart', function(e) {
+  _touchStartX = e.touches[0].clientX;
+}, { passive: true });
+document.getElementById('imgZoomOverlay') && document.getElementById('imgZoomOverlay').addEventListener('touchend', function(e) {
+  var dx = e.changedTouches[0].clientX - _touchStartX;
+  if (Math.abs(dx) > 50) {
+    if (dx < 0 && _imgViewerAfter)  switchImgTab('after');
+    if (dx > 0 && _imgViewerBefore) switchImgTab('before');
+  }
+});
 
 // ═══════════════════════════════════════════
 // EXPORT / IMPORT
@@ -3128,12 +3297,14 @@ function showTradeDetail(id){
 
     ${(t.imgBefore||t.imgAfter)?`
     <div style="margin-bottom:16px;">
-      <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-family:'DM Mono',monospace;">Charts</div>
-      <div style="display:grid;grid-template-columns:${t.imgBefore&&t.imgAfter?'1fr 1fr':'1fr'};gap:12px;">
-        ${t.imgBefore?`<div><div style="font-size:10px;color:var(--dim);margin-bottom:4px;">Before</div><img src="${t.imgBefore}" style="width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;" onclick="openImgZoom(this.src)"></div>`:''}
-        ${t.imgAfter?`<div><div style="font-size:10px;color:var(--dim);margin-bottom:4px;">After</div><img src="${t.imgAfter}" style="width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;" onclick="openImgZoom(this.src)"></div>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;">Charts</div>
       </div>
-    </div>`:''}
+      <div style="display:grid;grid-template-columns:${t.imgBefore&&t.imgAfter?'1fr 1fr':'1fr'};gap:12px;">
+        ${t.imgBefore?`<div style="cursor:zoom-in" onclick="window._viewerB='${t.imgBefore}';window._viewerA='${t.imgAfter||''}';openImgViewer(window._viewerB,window._viewerA,'before')"><div style="font-size:10px;color:var(--dim);margin-bottom:4px;">📷 Before</div><img src="${t.imgBefore}" style="width:100%;border-radius:8px;border:1px solid var(--line);"></div>`:''}
+        ${t.imgAfter?`<div style="cursor:zoom-in" onclick="window._viewerB='${t.imgBefore||''}';window._viewerA='${t.imgAfter}';openImgViewer(window._viewerB,window._viewerA,'after')"><div style="font-size:10px;color:var(--dim);margin-bottom:4px;">📸 After</div><img src="${t.imgAfter}" style="width:100%;border-radius:8px;border:1px solid var(--line);"></div>`:''}
+      </div>
+    </div>`:''}'
 
     <div style="display:flex;gap:10px;margin-top:20px;padding-top:20px;border-top:1px solid var(--line);">
       <button class="btn btn-ghost" style="flex:1;" onclick="editTrade('${t.id}');document.getElementById('detailOverlay').classList.remove('show')">✏ Edit</button>
@@ -3168,6 +3339,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   initTheme();
   initDDSettings();
   initRememberMe();
+  initReminder();
   // Build score pips for trade modal
   buildScorePips('conf-score');
   // Build score pips for journal panel
@@ -3997,6 +4169,211 @@ function installPWA() {
   });
 }
 
+
+// ═══════════════════════════════════════════
+// TRADE REMINDER SYSTEM
+// ═══════════════════════════════════════════
+
+var reminderSettings = {
+  enabled: false,
+  times: [],
+  message: 'อย่าลืมบันทึก Trade และ Journal วันนี้นะ! 📈'
+};
+var reminderTimers = [];
+
+function loadReminderSettings() {
+  try {
+    var s = JSON.parse(Store.get('reminderSettings') || 'null');
+    if (s) reminderSettings = s;
+  } catch(e) {}
+}
+
+function saveReminderSettings() {
+  var msg = document.getElementById('reminderMessage').value.trim();
+  if (msg) reminderSettings.message = msg;
+  Store.set('reminderSettings', JSON.stringify(reminderSettings));
+  scheduleReminders();
+  closeReminderSettings();
+  toast('บันทึกการตั้งค่า Reminder แล้ว' + (reminderSettings.enabled && reminderSettings.times.length ? ' (' + reminderSettings.times.join(', ') + ')' : ''), 'success');
+  updateReminderNavBtn();
+}
+
+function openReminderSettings() {
+  loadReminderSettings();
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(updatePermStatus);
+  }
+  // Render UI
+  var toggle = document.getElementById('reminderToggle');
+  toggle.classList.toggle('on', reminderSettings.enabled);
+  // Restore selected times
+  document.querySelectorAll('.reminder-time-btn').forEach(function(btn) {
+    btn.classList.toggle('active', reminderSettings.times.includes(btn.dataset.time));
+  });
+  document.getElementById('reminderMessage').value = reminderSettings.message || '';
+  renderSelectedTimes();
+  updatePermStatus();
+  document.getElementById('reminderOverlay').style.display = 'flex';
+}
+
+function closeReminderSettings() {
+  document.getElementById('reminderOverlay').style.display = 'none';
+}
+
+function toggleReminder() {
+  reminderSettings.enabled = !reminderSettings.enabled;
+  document.getElementById('reminderToggle').classList.toggle('on', reminderSettings.enabled);
+}
+
+function toggleReminderTime(time) {
+  var idx = reminderSettings.times.indexOf(time);
+  if (idx >= 0) {
+    reminderSettings.times.splice(idx, 1);
+  } else {
+    reminderSettings.times.push(time);
+    reminderSettings.times.sort();
+  }
+  document.querySelectorAll('.reminder-time-btn').forEach(function(btn) {
+    btn.classList.toggle('active', reminderSettings.times.includes(btn.dataset.time));
+  });
+  renderSelectedTimes();
+}
+
+function addCustomReminderTime() {
+  var t = document.getElementById('reminderCustomTime').value;
+  if (!t) { toast('กรุณาเลือกเวลา', 'warning'); return; }
+  if (!reminderSettings.times.includes(t)) {
+    reminderSettings.times.push(t);
+    reminderSettings.times.sort();
+    renderSelectedTimes();
+    toast('เพิ่มเวลา ' + t + ' แล้ว', 'success');
+  } else {
+    toast('เวลานี้มีอยู่แล้ว', 'warning');
+  }
+  document.getElementById('reminderCustomTime').value = '';
+}
+
+function renderSelectedTimes() {
+  var list = document.getElementById('selectedTimesList');
+  var wrap = document.getElementById('selectedTimesWrap');
+  if (!reminderSettings.times.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  list.innerHTML = reminderSettings.times.map(function(t) {
+    return '<span class="reminder-active-badge" data-t="' + t + '">🕐 ' + t +
+      ' <span data-rm="' + t + '" style="cursor:pointer;margin-left:4px;opacity:0.7;">✕</span></span>';
+  }).join('');
+  list.querySelectorAll('[data-rm]').forEach(function(el) {
+    el.onclick = function() { removeReminderTime(el.dataset.rm); };
+  });
+}
+
+function removeReminderTime(time) {
+  reminderSettings.times = reminderSettings.times.filter(function(t){ return t !== time; });
+  document.querySelectorAll('.reminder-time-btn').forEach(function(btn) {
+    btn.classList.toggle('active', reminderSettings.times.includes(btn.dataset.time));
+  });
+  renderSelectedTimes();
+}
+
+function updatePermStatus() {
+  var el = document.getElementById('notifPermStatus');
+  if (!el) return;
+  if (!('Notification' in window)) {
+    el.textContent = '⚠️ Browser นี้ไม่รองรับ Notification';
+    el.style.color = 'var(--red)';
+  } else if (Notification.permission === 'granted') {
+    el.textContent = '✅ อนุญาตการแจ้งเตือนแล้ว';
+    el.style.color = 'var(--green)';
+  } else if (Notification.permission === 'denied') {
+    el.textContent = '❌ บล็อกการแจ้งเตือนอยู่ — ไปแก้ใน Settings ของ browser';
+    el.style.color = 'var(--red)';
+  } else {
+    el.textContent = '⏳ กรุณาอนุญาตการแจ้งเตือนเมื่อ browser ถาม';
+    el.style.color = 'var(--gold)';
+  }
+}
+
+function scheduleReminders() {
+  // Clear existing timers
+  reminderTimers.forEach(function(id){ clearTimeout(id); });
+  reminderTimers = [];
+  if (!reminderSettings.enabled || !reminderSettings.times.length) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    Notification.requestPermission().then(function(p) {
+      if (p === 'granted') scheduleReminders();
+    });
+    return;
+  }
+
+  reminderSettings.times.forEach(function(timeStr) {
+    var ms = msUntilTime(timeStr);
+    var id = setTimeout(function() {
+      fireReminder(timeStr);
+      // Schedule next day
+      var nextId = setTimeout(function(){ fireReminder(timeStr); }, 24*60*60*1000);
+      reminderTimers.push(nextId);
+    }, ms);
+    reminderTimers.push(id);
+  });
+}
+
+function msUntilTime(timeStr) {
+  var parts = timeStr.split(':');
+  var now = new Date();
+  var target = new Date();
+  target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1); // tomorrow
+  return target - now;
+}
+
+function fireReminder(timeStr) {
+  if (!reminderSettings.enabled) return;
+  var msg = reminderSettings.message || 'อย่าลืมบันทึก Trade และ Journal วันนี้นะ! 📈';
+  // Browser notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    var n = new Notification('📈 TradeLog Reminder', {
+      body: msg,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'tradelog-reminder-' + timeStr,
+      renotify: true
+    });
+    n.onclick = function() { window.focus(); n.close(); };
+  }
+  // In-app toast ด้วย
+  toast('🔔 ' + msg, 'info', 8000);
+}
+
+function updateReminderNavBtn() {
+  var btn = document.getElementById('reminderNavBtn');
+  if (!btn) return;
+  if (reminderSettings.enabled && reminderSettings.times.length) {
+    btn.querySelector('.nav-text').textContent = 'Reminder (' + reminderSettings.times.length + ')';
+    btn.style.color = 'var(--gold)';
+  } else {
+    btn.querySelector('.nav-text').textContent = 'Trade Reminder';
+    btn.style.color = '';
+  }
+}
+
+function initReminder() {
+  loadReminderSettings();
+  updateReminderNavBtn();
+  if (reminderSettings.enabled && reminderSettings.times.length) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      scheduleReminders();
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission().then(function(p) {
+        if (p === 'granted') scheduleReminders();
+      });
+    }
+  }
+}
+
 </script>
 
 <!-- ══ TOAST CONTAINER ══ -->
@@ -4100,6 +4477,70 @@ function installPWA() {
         <div style="font-size:11px;color:var(--dim);margin-top:4px;">แจ้งเตือนเมื่อ drawdown รวมเกิน % นี้</div>
       </div>
       <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="saveDDSettings()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ TRADE REMINDER MODAL ══ -->
+<div class="overlay" id="reminderOverlay" style="display:none;align-items:center;justify-content:center;" onclick="if(event.target===this)closeReminderSettings()">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h2>🔔 Trade Reminder</h2>
+      <button class="modal-close" onclick="closeReminderSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- On/Off toggle -->
+      <div class="reminder-toggle" style="margin-bottom:16px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--bright);">เปิดการแจ้งเตือน</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:2px;">แจ้งเตือนให้บันทึก Journal และ Trade</div>
+        </div>
+        <div class="toggle-switch" id="reminderToggle" onclick="toggleReminder()"></div>
+      </div>
+
+      <!-- Preset times -->
+      <div style="font-size:11px;color:var(--dim);margin-bottom:8px;font-family:'DM Mono',monospace;">เลือกเวลาที่ต้องการ (เลือกได้หลายเวลา)</div>
+      <div class="reminder-time-grid" id="reminderPresets">
+        <div class="reminder-time-btn" data-time="07:00" onclick="toggleReminderTime('07:00')">🌅 07:00<br><small>เช้า</small></div>
+        <div class="reminder-time-btn" data-time="08:00" onclick="toggleReminderTime('08:00')">☀️ 08:00<br><small>เปิดตลาด</small></div>
+        <div class="reminder-time-btn" data-time="12:00" onclick="toggleReminderTime('12:00')">🕛 12:00<br><small>เที่ยง</small></div>
+        <div class="reminder-time-btn" data-time="15:00" onclick="toggleReminderTime('15:00')">🌤 15:00<br><small>บ่าย</small></div>
+        <div class="reminder-time-btn" data-time="18:00" onclick="toggleReminderTime('18:00')">🌆 18:00<br><small>เย็น</small></div>
+        <div class="reminder-time-btn" data-time="20:00" onclick="toggleReminderTime('20:00')">🌙 20:00<br><small>ค่ำ</small></div>
+        <div class="reminder-time-btn" data-time="22:00" onclick="toggleReminderTime('22:00')">⭐ 22:00<br><small>ดึก</small></div>
+        <div class="reminder-time-btn" data-time="23:00" onclick="toggleReminderTime('23:00')">🌛 23:00<br><small>ปิดตลาด</small></div>
+      </div>
+
+      <!-- Custom time -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-family:'DM Mono',monospace;">หรือกำหนดเวลาเอง</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="time" id="reminderCustomTime"
+            style="background:var(--ink3);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;flex:1;">
+          <button class="btn btn-ghost btn-sm" onclick="addCustomReminderTime()">＋ เพิ่ม</button>
+        </div>
+      </div>
+
+      <!-- Selected times -->
+      <div id="selectedTimesWrap" style="margin-bottom:16px;display:none;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:8px;font-family:'DM Mono',monospace;">เวลาที่เลือก:</div>
+        <div id="selectedTimesList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+
+      <!-- Message customization -->
+      <div class="fg" style="margin-bottom:20px;">
+        <label>ข้อความแจ้งเตือน</label>
+        <input type="text" id="reminderMessage" placeholder="เช่น อย่าลืมบันทึก Trade และ Journal วันนี้นะ!">
+      </div>
+
+      <!-- Permission status -->
+      <div id="notifPermStatus" style="font-size:11px;color:var(--dim);margin-bottom:16px;text-align:center;"></div>
+
+      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="saveReminderSettings()">
+        💾 บันทึกการตั้งค่า
+      </button>
     </div>
   </div>
 </div>
