@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VayneFrame — Trading Journal</title>
+<title>TradeLog — Trading Journal</title>
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TradeLog">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -78,8 +78,10 @@ body::before {
 }
 .brand-icon {
   width: 28px; height: 28px;
-  border-radius: 6px;
-  overflow: hidden;
+  background: var(--gold);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
   flex-shrink: 0;
 }
 .brand-name { font-size: 14px; font-weight: 700; color: var(--bright); letter-spacing: -0.3px; }
@@ -647,7 +649,7 @@ body::before {
   box-shadow:0 30px 80px rgba(0,0,0,0.5);
 }
 .login-logo { text-align:center; margin-bottom:28px; }
-.login-logo .brand-icon { width:80px;height:80px;border-radius:16px;overflow:hidden;margin-bottom:12px;display:inline-block; }
+.login-logo .brand-icon { width:52px;height:52px;border-radius:14px;background:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:12px; }
 .login-logo h1 { font-size:22px;font-weight:800;color:var(--bright); }
 .login-logo p { font-size:12px;color:var(--dim);font-family:'DM Mono',monospace;margin-top:4px; }
 .login-err { background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;display:none; }
@@ -892,19 +894,6 @@ body.light-mode .modal   { background:#fff; }
   font-family:'DM Mono',monospace;
 }
 
-
-/* ── Brand Logo ── */
-.brand-logo {
-  width: 28px; height: 28px; border-radius: 6px;
-  background: url("icon-192.png") center/cover no-repeat;
-  flex-shrink: 0;
-}
-.login-logo-img {
-  width: 80px; height: 80px; border-radius: 16px;
-  background: url("icon-192.png") center/cover no-repeat;
-  margin: 0 auto 12px;
-}
-
 </style>
 </head>
 <body>
@@ -914,8 +903,8 @@ body.light-mode .modal   { background:#fff; }
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-logo-img"></div>
-      <h1>VayneFrame</h1>
+      <div class="brand-icon">📈</div>
+      <h1>TradeLog</h1>
       <p>Trading Journal</p>
     </div>
 
@@ -1035,12 +1024,11 @@ body.light-mode .modal   { background:#fff; }
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-logo"></div>
+      <div class="brand-icon">📈</div>
       <div>
-        <div class="brand-name">VayneFrame</div>
-        <div class="brand-sub">Trading Journal</div>
+        <div class="brand-name">TradeLog</div>
+        <div class="brand-sub">Journal</div>
       </div>
-    </div>
     </div>
 
     <div class="nav-label">Menu</div>
