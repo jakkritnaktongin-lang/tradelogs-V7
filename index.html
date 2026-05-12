@@ -3361,6 +3361,20 @@ function refreshAll(){
 // INIT
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
+  // Safety: force show dashboard if pages are all hidden after 1s
+  setTimeout(function() {
+    var anyVisible = false;
+    document.querySelectorAll('.page').forEach(function(p) {
+      if(p.classList.contains('show')) anyVisible = true;
+    });
+    if(!anyVisible) {
+      var dash = document.getElementById('page-dashboard');
+      if(dash) dash.classList.add('show');
+    }
+    // Also force main to be visible
+    var main = document.querySelector('.main');
+    if(main) main.style.display = 'flex';
+  }, 1500);
   initTheme();
   initDDSettings();
   initRememberMe();
